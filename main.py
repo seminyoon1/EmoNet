@@ -11,6 +11,7 @@ import imageio
 import numpy as np
 import config as cfg
 
+
 def str2bool(v):
   return v.lower() in ('true')
 
