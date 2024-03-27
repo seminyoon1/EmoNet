@@ -9,9 +9,11 @@ from torch.autograd import Variable
 from torchvision.utils import save_image
 from torchvision import transforms
 import tqdm
+import torchvision.models as models
 from PIL import Image
 import time
 import datetime
+from models.vgg16 import Classifier
 import ipdb
 import config as cfg
 import glob
@@ -20,6 +22,10 @@ import pickle
 from utils import ACC_TEST, plot_confusion_matrix
 import matplotlib.pyplot as plt
 from scipy.ndimage import filters
+from graphviz import Digraph
+from torchviz import make_dot, make_dot_from_trace
+from utils import pdf2png
+
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -30,7 +36,6 @@ class Solver(object):
     # Data loader
     self.data_loader = data_loader
     self.num_classes = data_loader.dataset.num_classes
-    assert self.num_classes==22
     self.class_names = cfg.class_names
 
     self.image_size = config.image_size
@@ -83,38 +88,35 @@ class Solver(object):
   #=======================================================================================#
   #=======================================================================================#
   def display_net(self):
-  	#pip install git+https://github.com/szagoruyko/pytorchviz
-  	from graphviz import Digraph
-  	from torchviz import make_dot, make_dot_from_trace
-  	from utils import pdf2png
-	y = self.C(self.to_var(torch.randn(1,3,224,224)))
-	g=make_dot(y, params=dict(self.C.named_parameters()))
-	filename='network'
-	g.filename=filename
-	g.render()
-	os.remove(filename)
-	pdf2png(filename)
-	print('Network saved at {}.png'.format(filename))
+	  y = self.C(self.to_var(torch.randn(1,3,224,224)))
+	  g=make_dot(y, params=dict(self.C.named_parameters()))
+	  filename='network'
+	  g.filename=filename
+	  g.render()
+	  os.remove(filename)
+	  pdf2png(filename)
+	  print('Network saved at {}.png'.format(filename))
 
   #=======================================================================================#
   #=======================================================================================#
   def build_model(self):
-    # Define a generator and a discriminator
+        # Define a generator and a discriminator
+        self.C = Classifier(num_classes=self.num_classes)  # Assuming no pretrained argument
+        
+        # Load pre-trained weights separately
+        pretrained_vgg16 = models.vgg16()
+        self.C.load_state_dict(pretrained_vgg16.state_dict(), strict=False)  # Load weights into your model
+        
+        # Optimizers
+        self.optimizer = torch.optim.Adam(self.C.parameters(), self.lr, [self.beta1, self.beta2])
 
-    from models.vgg16 import Classifier
-    self.C = Classifier(pretrained=self.finetuning, num_classes=self.num_classes) 
+        # Print networks
+        self.print_network(self.C, 'Classifier')
 
-    # Optimizers
-    self.optimizer = torch.optim.Adam(self.C.parameters(), self.lr, [self.beta1, self.beta2])
+        self.LOSS = nn.CrossEntropyLoss()
 
-    # Print networks
-    self.print_network(self.C, 'Classifier')
-
-    self.LOSS = nn.CrossEntropyLoss()
-    
-    if torch.cuda.is_available():
-      self.C.cuda()
-
+        if torch.cuda.is_available():
+            self.C.cuda()
   #=======================================================================================#
   #=======================================================================================#
   def print_network(self, model, name):

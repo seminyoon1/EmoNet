@@ -10,6 +10,7 @@ import ipdb
 import imageio
 import numpy as np
 import config as cfg
+from solver import Solver    
 
 
 def str2bool(v):
@@ -33,9 +34,7 @@ def main(config):
   data_loader = get_loader(config.metadata_path, img_size,
                    img_size, config.batch_size, config.fold, 'EmotionNet', config.mode,\
                    num_workers=config.num_workers)
-
-  # Solver
-  from solver import Solver    
+  
   solver = Solver(data_loader, config)
   if config.DISPLAY_NET: 
     solver.display_net()

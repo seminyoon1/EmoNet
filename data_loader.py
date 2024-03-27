@@ -84,7 +84,7 @@ def get_loader(metadata_path, crop_size, image_size, batch_size, \
   else:
     transform = transforms.Compose([
       # transforms.CenterCrop(crop_size),
-      transforms.Resize((image_size, image_size), interpolation=Image.ANTIALIAS),
+      transforms.Resize((image_size, image_size), interpolation=Image.BICUBIC),
       # transforms.Scale(image_size, interpolation=Image.ANTIALIAS),
       transforms.ToTensor(),
       normalize,
