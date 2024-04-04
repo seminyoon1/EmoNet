@@ -16,10 +16,11 @@ import datetime
 from models.vgg16 import Classifier
 import ipdb
 import config as cfg
+from config import num_classes
 import glob
 import pylab
 import pickle
-from utils import ACC_TEST, plot_confusion_matrix
+from utils import plot_confusion_matrix
 import matplotlib.pyplot as plt
 from scipy.ndimage import filters
 from graphviz import Digraph
@@ -35,7 +36,7 @@ class Solver(object):
   def __init__(self, data_loader, config):
     # Data loader
     self.data_loader = data_loader
-    self.num_classes = data_loader.dataset.num_classes
+    self.num_classes = num_classes
     self.class_names = cfg.class_names
 
     self.image_size = config.image_size
@@ -55,6 +56,7 @@ class Solver(object):
     self.BLUR = config.BLUR
     self.GRAY = config.GRAY
     self.DISPLAY_NET = config.DISPLAY_NET
+    self.loss_fn = nn.CrossEntropyLoss()
 
     # Test settings
     self.test_model = config.test_model
@@ -84,6 +86,44 @@ class Solver(object):
       # Start with trained model
       if self.pretrained_model:
         self.load_pretrained_model()
+  
+  def ACC_TEST(solver, data_loader, mode='VAL', verbose=False):
+    # Initialize variables to track accuracy and loss
+    correct = 0
+    total = 0
+    loss_total = 0.0
+
+    # Set model to evaluation mode
+    solver.C.eval()
+
+    # Iterate over the data loader
+    for i, (images, labels) in enumerate(data_loader):
+        # Forward pass to get outputs
+        outputs = solver.C(images)
+
+        # Compute loss (if needed)
+        loss = solver.loss_fn(outputs, labels)
+        loss_total += loss.item()
+
+        # Get predicted labels
+        _, predicted = torch.max(outputs, 1)
+
+        # Compute accuracy
+        total += labels.size(0)
+        correct += (predicted == labels).sum().item()
+
+    # Compute accuracy and loss
+    accuracy = 100 * correct / total
+    average_loss = loss_total / len(data_loader)
+
+    # Print verbose information if requested
+    if verbose:
+        print(f'{mode} Accuracy: {accuracy:.2f}%')
+        print(f'{mode} Loss: {average_loss:.4f}')
+
+    print(loss_total)
+
+    return accuracy, accuracy, average_loss
 
   #=======================================================================================#
   #=======================================================================================#
@@ -200,18 +240,13 @@ class Solver(object):
     
   #=======================================================================================#
   #=======================================================================================#
-  def plot_cm(self, CM, aca, E, i):
-    # Plot non-normalized confusion matrix
-    # plt.figure()
-    # plot_confusion_matrix(CM, classes=self.class_names,
-    #                       title='Confusion matrix, without normalization.\nACA: %0.3f'%(aca))
-    # pylab.savefig(os.path.join(self.result_save_path, '{}_{}.png'.format(E, i+1)))
-
-    # Plot normalized confusion matrix
-    plt.figure()
-    plot_confusion_matrix(CM, classes=self.class_names, normalize=True,
-                          title='CM. ACA: %0.3f'%(aca))
-    pylab.savefig(os.path.join(self.result_save_path, '{}_{}_norm.png'.format(E, i+1)))   
+  def plot_cm(self, CM, aca_val, E, i):
+    if isinstance(CM, np.ndarray):
+        plot_confusion_matrix(CM, classes=self.class_names, normalize=True,
+                              title='Normalized confusion matrix (ACC: %0.3f)' % aca_val,
+                              save_path=os.path.join(self.model_save_path, 'CM_%s_%s.png'%(E, i)))
+    else:
+        print("CM is not a numpy array, skipping plotting.")
 
   #=======================================================================================#
   #=======================================================================================#
@@ -227,16 +262,15 @@ class Solver(object):
     
     # Start with trained model if exists
     if self.pretrained_model:
-      start = int(self.pretrained_model.split('_')[0])
-      # Decay learning rate
-      for i in range(start):
-        if (i+1) > (self.num_epochs - self.num_epochs_decay):
-          # g_lr -= (self.g_lr / float(self.num_epochs_decay))
-          lr -= (self.lr / float(self.num_epochs_decay))
-          self.update_lr(lr)
-          print ('Decay learning rate to: {}.'.format(lr))      
+        start = int(self.pretrained_model.split('_')[0])
+        # Decay learning rate
+        for i in range(start):
+            if (i+1) > (self.num_epochs - self.num_epochs_decay):
+                lr -= (self.lr / float(self.num_epochs_decay))
+                self.update_lr(lr)
+                print('Decay learning rate to: {}.'.format(lr))      
     else:
-      start = 0
+        start = 0
 
     last_model_step = len(self.data_loader)
 
@@ -255,130 +289,165 @@ class Solver(object):
     start_time = time.time()
 
     for e in range(start, self.num_epochs):
-      E = str(e+1).zfill(2)
-      self.C.train()
+        E = str(e+1).zfill(2)
+        self.C.train()
 
-      if flag_init:
-        CM, aca_val, loss_val = self.val(init=True)  
-        log = '[ACA_VAL: %0.3f LOSS_VAL: %0.3f]'%(aca_val, loss_val)
-        print(log)
-        flag_init = False
-        if self.pretrained_model:
-          aca_val_prev=aca_val
-        self.plot_cm(CM, aca_val, E, 0) 
+        if flag_init:
+            ACC_val, aca_val, loss_val = self.val(init=True)  
+            log = '[ACA_VAL: %0.3f LOSS_VAL: %0.3f]'%(aca_val, loss_val)
+            print(log)
+            flag_init = False
+            if self.pretrained_model:
+                aca_val_prev=aca_val
+            #self.plot_cm(CM, aca_val, E, 0) 
 
-      for i, (rgb_img, rgb_label, rgb_files) in tqdm.tqdm(enumerate(self.data_loader), \
-          total=len(self.data_loader), desc='Epoch: %d/%d | %s'%(e,self.num_epochs, Log)):
-        # ipdb.set_trace()
-        if self.BLUR: rgb_img = self.blurRANDOM(rgb_img)
+        for i, (rgb_img, rgb_label) in tqdm.tqdm(enumerate(self.data_loader), \
+                total=len(self.data_loader), desc='Epoch: %d/%d | %s'%(e,self.num_epochs, Log)):
+            # ipdb.set_trace()
+            if self.BLUR: 
+                rgb_img = self.blurRANDOM(rgb_img)
 
-        rgb_img = self.to_var(rgb_img)
-        rgb_label = self.to_var(rgb_label)
+            rgb_img = self.to_var(rgb_img)
+            
+            # Dynamically handle the dimensionality of rgb_label
+            if len(rgb_label.shape) > 1:
+                rgb_label = rgb_label.squeeze(1)
 
-        out = self.C(rgb_img)
+            rgb_label = self.to_var(rgb_label)
 
-        loss_cls = self.LOSS(out, rgb_label.squeeze(1))   
+            out = self.C(rgb_img)
 
-        # # Backward + Optimize
-        self.reset_grad()
-        loss_cls.backward()
-        self.optimizer.step()
+            loss_cls = self.LOSS(out, rgb_label)   
 
+            # Backward + Optimize
+            self.reset_grad()
+            loss_cls.backward()
+            self.optimizer.step()
 
-        # Logging
-        loss = {}
-        loss['LOSS'] = loss_cls.data[0]
-        loss_cum['LOSS'].append(loss_cls.data[0])    
-        # Print out log info
-        if (i+1) % self.log_step == 0 or (i+1)==last_model_step:
-          if self.use_tensorboard:
-            for tag, value in loss.items():
-              self.logger.scalar_summary(tag, value, e * iters_per_epoch + i + 1)
+            # Logging
+            loss = {}
+            loss['LOSS'] = loss_cls.item()
+            loss_cum['LOSS'].append(loss_cls.item())    
 
+            # Print out log info
+            if (i+1) % self.log_step == 0 or (i+1) == last_model_step:
+                if self.use_tensorboard:
+                    for tag, value in loss.items():
+                        self.logger.scalar_summary(tag, value, e * iters_per_epoch + i + 1)
 
-      #F1 val
-      CM, aca_val, loss_val = self.val()
+        #F1 val
+        ACC_val, aca_val, loss_val = self.val()
 
-      if self.use_tensorboard:
-        self.logger.scalar_summary('ACC_val: ', aca_val, e * iters_per_epoch + i + 1) 
-        self.logger.scalar_summary('LOSS_val: ', loss_val, e * iters_per_epoch + i + 1)     
+        if self.use_tensorboard:
+            # Log validation metrics to tensorboard
+            self.logger.scalar_summary('ACC_val: ', aca_val, e * iters_per_epoch + i + 1) 
+            self.logger.scalar_summary('LOSS_val: ', loss_val, e * iters_per_epoch + i + 1)     
 
+            for tag, value in loss_cum.items():
+                self.logger.scalar_summary(tag, np.array(value).mean(), e * iters_per_epoch + i + 1)   
+
+        # Print validation metrics
+        elapsed = time.time() - start_time
+        elapsed = str(datetime.timedelta(seconds=elapsed))
+
+        log = 'Elapsed: %s | [ACC_VAL: %0.3f LOSS_VAL: %0.3f] | Train'%(elapsed, aca_val, loss_val)
         for tag, value in loss_cum.items():
-          self.logger.scalar_summary(tag, np.array(value).mean(), e * iters_per_epoch + i + 1)   
-               
-      #Stats per epoch
-      elapsed = time.time() - start_time
-      elapsed = str(datetime.timedelta(seconds=elapsed))
+            log += ", {}: {:.4f}".format(tag, np.array(value).mean())   
 
-      log = 'Elapsed: %s | [ACC_VAL: %0.3f LOSS_VAL: %0.3f] | Train'%(elapsed, aca_val, loss_val)
-      for tag, value in loss_cum.items():
-        log += ", {}: {:.4f}".format(tag, np.array(value).mean())   
+        print(log)
 
-      print(log)
+        # Save model if validation accuracy improves
+        if aca_val > aca_val_prev:        
+            torch.save(self.C.state_dict(), os.path.join(self.model_save_path, '{}_{}.pth'.format(E, i+1)))
+            print("! Saving model")
+            # Compute confusion matrix
+            # np.set_printoptions(precision=2)
+            # self.plot_cm(CM, aca_val, E, i+1)       
+                
+        #Stats per epoch
+        elapsed = time.time() - start_time
+        elapsed = str(datetime.timedelta(seconds=elapsed))
 
-      # if loss_val<loss_val_prev:
-      if aca_val>aca_val_prev:        
-        torch.save(self.C.state_dict(), os.path.join(self.model_save_path, '{}_{}.pth'.format(E, i+1)))
-        print("! Saving model")
-        # Compute confusion matrix
-        np.set_printoptions(precision=2)
-        self.plot_cm(CM, aca_val, E, i+1)       
+        log = 'Elapsed: %s | [ACC_VAL: %0.3f LOSS_VAL: %0.3f] | Train'%(elapsed, aca_val, loss_val)
+        for tag, value in loss_cum.items():
+            log += ", {}: {:.4f}".format(tag, np.array(value).mean())   
 
-        # loss_val_prev = loss_val
-        aca_val_prev = aca_val
-        non_decreasing = 0
+        print(log)
 
-      else:
-        non_decreasing+=1
-        if non_decreasing == self.stop_training:
-          print("During {} epochs ACC VAL was not increasing.".format(self.stop_training))
-          return
+        # Save model if validation accuracy improves
+        if aca_val > aca_val_prev:        
+            torch.save(self.C.state_dict(), os.path.join(self.model_save_path, '{}_{}.pth'.format(E, i+1)))
+            print("! Saving model")
+            # Compute confusion matrix
+            # np.set_printoptions(precision=2)
+           # self.plot_cm(CM, aca_val, E, i+1)       
 
-      # Decay learning rate
-      if (e+1) > (self.num_epochs - self.num_epochs_decay):
-        lr -= (self.lr / float(self.num_epochs_decay))
-        self.update_lr(lr)
-        print ('Decay learning rate to: {}.'.format(lr))
+            aca_val_prev = aca_val
+            non_decreasing = 0
+
+        else:
+            non_decreasing += 1
+            if non_decreasing == self.stop_training:
+                print("During {} epochs ACC VAL was not increasing.".format(self.stop_training))
+                return
+
+        # Decay learning rate
+        if (e+1) > (self.num_epochs - self.num_epochs_decay):
+            lr -= (self.lr / float(self.num_epochs_decay))
+            self.update_lr(lr)
+            print ('Decay learning rate to: {}.'.format(lr))
 
   #=======================================================================================#
   #=======================================================================================#
   def val(self, init=False, load=False, plot=False):
     # Load trained parameters
     if init:
-      from data_loader import get_loader
-      # ipdb.set_trace()
-      self.data_loader_val = get_loader(self.metadata_path, self.image_size,
-                   self.image_size, self.batch_size, self.fold, 'EmotionNet', 'val')
+        from data_loader import get_loader
+        self.data_loader_val = get_loader(self.metadata_path, self.image_size,
+                                          self.batch_size, 'val', self.fold)
+        txt_path = os.path.join(self.model_save_path, '0_init_val.txt')
 
-      txt_path = os.path.join(self.model_save_path, '0_init_val.txt')
-    
     if load:
-      self.data_loader_val = self.data_loader
-      last_file = sorted(glob.glob(os.path.join(self.model_save_path,  '*.pth')))[-1]
-      last_name = os.path.basename(last_file).split('.')[0]
-      txt_path = os.path.join(self.model_save_path, '{}_{}_val.txt'.format(last_name,'{}'))
-      try:
-        output_txt  = sorted(glob.glob(txt_path.format('*')))[-1]
-        number_file = len(glob.glob(output_txt))
-      except:
-        number_file = 0
-      txt_path = txt_path.format(str(number_file).zfill(2)) 
+        self.data_loader_val = self.data_loader
+        last_file = sorted(glob.glob(os.path.join(self.model_save_path, '*.pth')))[-1]
+        last_name = os.path.basename(last_file).split('.')[0]
+        txt_path = os.path.join(self.model_save_path, '{}_{}_val.txt'.format(last_name, '{}'))
+        try:
+            output_txt = sorted(glob.glob(txt_path.format('*')))[-1]
+            number_file = len(glob.glob(output_txt))
+        except:
+            number_file = 0
+        txt_path = txt_path.format(str(number_file).zfill(2))
 
-      D_path = os.path.join(self.model_save_path, '{}.pth'.format(last_name))
-      self.C.load_state_dict(torch.load(D_path))
+        D_path = os.path.join(self.model_save_path, '{}.pth'.format(last_name))
+        self.C.load_state_dict(torch.load(D_path))
 
     self.C.eval()
 
-    if load: self.f=open(txt_path, 'a')
-    acc,aca,loss = ACC_TEST(self, self.data_loader_val, mode='VAL', verbose=load)
-    if load: self.f.close()
+    if load:
+        self.f = open(txt_path, 'a')
+    acc, aca, loss = self.ACC_TEST(self.data_loader_val, verbose=load)
+    if load:
+        self.f.close()
 
-    if plot: 
-      np.set_printoptions(precision=2)
-      self.plot_cm(acc, aca, int(last_name.split('_')[0]), int(last_name.split('_')[1]))  
+    CM = np.zeros((self.num_classes, self.num_classes))  # Initialize confusion matrix
+
+    if plot:
+        with torch.no_grad():
+            for images, labels in self.data_loader_val:
+                images = self.to_var(images)
+                labels = self.to_var(labels)
+                outputs = self.C(images)
+                _, predicted = torch.max(outputs, 1)
+                for i in range(len(labels)):
+                    true_label = labels[i].item()
+                    predicted_label = predicted[i].item()
+                    CM[true_label][predicted_label] += 1
+
+        np.set_printoptions(precision=2)
 
     return acc, aca, loss
-
+  
   #=======================================================================================#
   #=======================================================================================#
   def sample(self):

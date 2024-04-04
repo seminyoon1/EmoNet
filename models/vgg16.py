@@ -28,7 +28,7 @@ model_vgg16 = models.vgg16(pretrained=True)
 
 class Classifier(nn.Module):
 
-    def __init__(self, num_classes=22):
+    def __init__(self, num_classes=4):
         super(Classifier, self).__init__()
         self.num_classes = num_classes
         self._initialize_weights()

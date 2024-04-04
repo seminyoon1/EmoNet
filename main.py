@@ -11,7 +11,7 @@ import imageio
 import numpy as np
 import config as cfg
 from solver import Solver    
-
+from models.vgg16 import Classifier  # Import your model class here
 
 def str2bool(v):
   return v.lower() in ('true')
@@ -30,22 +30,49 @@ def main(config):
 
   img_size = config.image_size
 
+  # Initialize your model
+  model = Classifier()  # Update this with your model class
+  
+  # Load the pre-trained weights
+  if config.pretrained_model:
+      pretrained_weights = torch.load(config.pretrained_model)
+      model.load_state_dict(pretrained_weights)
+      print("Pre-trained weights loaded successfully.")
+  else:
+      print("Warning: Pre-trained weights not specified. Training from scratch.")
 
-  data_loader = get_loader(config.metadata_path, img_size,
-                   img_size, config.batch_size, config.fold, 'EmotionNet', config.mode,\
-                   num_workers=config.num_workers)
+  # Modify the model architecture if needed
+  # Example: Replace the final classification layer
+  if config.num_classes != 1000:  # Assuming the original model was trained on ImageNet with 1000 classes
+      model.fc = nn.Linear(model.fc.in_features, config.num_classes)  # Change the output size for your dataset
+
+  # Prepare data loader
+  data_loader = get_loader(metadata_path=config.metadata_path,
+                           image_size=img_size,
+                           batch_size=config.batch_size,
+                           mode='train',
+                           fold=config.fold,
+                           num_workers=config.num_workers)
   
   solver = Solver(data_loader, config)
+    
   if config.DISPLAY_NET: 
-    solver.display_net()
-    return
+      solver.display_net()
+      return
+    
   if config.mode == 'train':
-    solver.train()
-    solver.val()
+      for epoch in range(config.num_epochs):
+          solver.train()
+          solver.val()
+          
+          # Save model checkpoint after each epoch
+          model_path = os.path.join(config.model_save_path, f"model_epoch_{epoch+1}.pth")
+          torch.save(solver.model.state_dict(), model_path)
+          print(f"Saved model checkpoint: {model_path}")
   elif config.mode == 'test':
-    solver.val(load=True, plot=True)
+      solver.val(load=True, plot=True)
   elif config.mode == 'sample':
-    solver.sample()
+      solver.sample()
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
@@ -76,7 +103,7 @@ if __name__ == '__main__':
   parser.add_argument('--GPU', type=str, default='3')
 
   # Path
-  parser.add_argument('--metadata_path', type=str, default='/home/afromero/datos/Databases/EmotionNet')
+  parser.add_argument('--metadata_path', type=str, default='./data/dataset/Dog Emotion')
   parser.add_argument('--log_path', type=str, default='./snapshot/logs')
   parser.add_argument('--model_save_path', type=str, default='./snapshot/models') 
   parser.add_argument('--result_save_path', type=str, default='./snapshot/results') 
@@ -84,7 +111,7 @@ if __name__ == '__main__':
   parser.add_argument('--mode_data', type=str, default='normal', choices=['normal', 'aligned'])  
    
   parser.add_argument('--finetuning', type=str, default='Imagenet', choices=['Imagenet', 'RANDOM'])   
-  parser.add_argument('--pretrained_model', type=str, default='')    
+  parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/ImageNet/03_43.pth')    
 
   # Step size
   parser.add_argument('--log_step', type=int, default=2000)
@@ -99,3 +126,5 @@ if __name__ == '__main__':
 
   print(config)
   main(config)
+
+## python main.py --image_size 224 --lr 0.0001 --num_epochs 10 --batch_size 64 --fold 0 --mode train
