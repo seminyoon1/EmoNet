@@ -19,7 +19,7 @@ def update_config(config):
     
     # Remove 'Faces_256' from metadata path
     config.metadata_path = os.path.join(config.metadata_path)
-
+    
     if config.pretrained_model=='':
         try:
             config.pretrained_model = sorted(glob.glob(os.path.join(config.model_save_path, '*.pth')))[-1]

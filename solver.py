@@ -34,58 +34,49 @@ warnings.filterwarnings('ignore')
 class Solver(object):
 
   def __init__(self, data_loader, config):
-    # Data loader
-    self.data_loader = data_loader
-    self.num_classes = num_classes
-    self.class_names = cfg.class_names
+        self.data_loader = data_loader
+        self.num_classes = num_classes
+        self.LOSS = nn.CrossEntropyLoss()
 
-    self.image_size = config.image_size
-    self.lr = config.lr
-    self.beta1 = config.beta1
-    self.beta2 = config.beta2
+        self.image_size = config.image_size
+        self.lr = config.lr
+        self.beta1 = config.beta1
+        self.beta2 = config.beta2
 
-    # Training settings
-    self.dataset = config.dataset
-    self.num_epochs = config.num_epochs
-    self.num_epochs_decay = config.num_epochs_decay
-    self.batch_size = config.batch_size
-    self.pretrained_model = config.pretrained_model
-    self.use_tensorboard = config.use_tensorboard
-    self.finetuning = config.finetuning
-    self.stop_training = config.stop_training
-    self.BLUR = config.BLUR
-    self.GRAY = config.GRAY
-    self.DISPLAY_NET = config.DISPLAY_NET
-    self.loss_fn = nn.CrossEntropyLoss()
+        self.dataset = config.dataset
+        self.num_epochs = config.num_epochs
+        self.num_epochs_decay = config.num_epochs_decay
+        self.batch_size = config.batch_size
+        self.pretrained_model = config.pretrained_model
+        self.use_tensorboard = config.use_tensorboard
+        self.finetuning = config.finetuning
+        self.stop_training = config.stop_training
+        self.BLUR = config.BLUR
+        self.GRAY = config.GRAY
+        self.DISPLAY_NET = config.DISPLAY_NET
+        self.loss_fn = nn.CrossEntropyLoss()
 
-    # Test settings
-    self.test_model = config.test_model
-    self.metadata_path = config.metadata_path
+        self.test_model = config.test_model
+        self.metadata_path = config.metadata_path
 
-    # Path
-    self.log_path = config.log_path
-    self.model_save_path = config.model_save_path
-    self.result_save_path = config.result_save_path
-    self.fold = config.fold
-    self.mode_data = config.mode_data
+        self.log_path = config.log_path
+        self.model_save_path = config.model_save_path
+        self.result_save_path = config.result_save_path
+        self.fold = config.fold
+        self.mode_data = config.mode_data
 
-    # Step size
-    self.log_step = config.log_step
+        self.log_step = config.log_step
+        self.GPU = config.GPU
 
-    #MISC
-    self.GPU = config.GPU
+        # Build tensorboard if use
+        if config.mode!='sample':
+          self.build_model()
+          if self.use_tensorboard:
+            self.build_tensorboard()
 
-    self.blurrandom = 0
-
-    # Build tensorboard if use
-    if config.mode!='sample':
-      self.build_model()
-      if self.use_tensorboard:
-        self.build_tensorboard()
-
-      # Start with trained model
-      if self.pretrained_model:
-        self.load_pretrained_model()
+          # Start with trained model
+          if self.pretrained_model:
+            self.load_pretrained_model()
   
   def ACC_TEST(solver, data_loader, mode='VAL', verbose=False):
     # Initialize variables to track accuracy and loss
@@ -129,7 +120,7 @@ class Solver(object):
   #=======================================================================================#
   def display_net(self):
 	  y = self.C(self.to_var(torch.randn(1,3,224,224)))
-	  g=make_dot(y, params=dict(self.C.named_parameters()))
+	  g = make_dot(y, params=dict(self.C.named_parameters()))
 	  filename='network'
 	  g.filename=filename
 	  g.render()
@@ -140,40 +131,40 @@ class Solver(object):
   #=======================================================================================#
   #=======================================================================================#
   def build_model(self):
-        # Define a generator and a discriminator
-        self.C = Classifier(num_classes=self.num_classes)  # Assuming no pretrained argument
-        
-        # Load pre-trained weights separately
-        pretrained_vgg16 = models.vgg16()
-        self.C.load_state_dict(pretrained_vgg16.state_dict(), strict=False)  # Load weights into your model
-        
-        # Optimizers
+        # Define your classifier model
+        self.C = Classifier(num_classes=self.num_classes)
+
+        # Load pre-trained weights if specified
+        if self.pretrained_model:
+            pretrained_weights = torch.load(self.pretrained_model)
+            self.C.load_state_dict(pretrained_weights)
+            print("Pre-trained weights loaded successfully.")
+
+        # Define optimizer
         self.optimizer = torch.optim.Adam(self.C.parameters(), self.lr, [self.beta1, self.beta2])
 
-        # Print networks
+        # Print network architecture
         self.print_network(self.C, 'Classifier')
 
-        self.LOSS = nn.CrossEntropyLoss()
+        # Define loss function
+        self.loss_fn = nn.CrossEntropyLoss()
 
+        # Move model to GPU if available
         if torch.cuda.is_available():
             self.C.cuda()
   #=======================================================================================#
   #=======================================================================================#
   def print_network(self, model, name):
-    num_params = 0
-    for p in model.parameters():
-      num_params += p.numel()
-    print(name)
-    # print(model)
-    print("The number of parameters: {}".format(num_params))
+      num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+      print(name)
+      print("The number of parameters: {}".format(num_params))
 
   #=======================================================================================#
   #=======================================================================================#
   def load_pretrained_model(self):
-    model = os.path.join(
-      self.model_save_path, '{}.pth'.format(self.pretrained_model))
+    model = self.pretrained_model
     self.C.load_state_dict(torch.load(model))
-    print('loaded trained model: {}!'.format(model))
+    print('loaded trained model: {}'.format(model))
 
   #=======================================================================================#
   #=======================================================================================#
@@ -184,8 +175,8 @@ class Solver(object):
   #=======================================================================================#
   #=======================================================================================#
   def update_lr(self, lr):
-    for param_group in self.optimizer.param_groups:
-      param_group['lr'] = lr
+        for param_group in self.optimizer.param_groups:
+            param_group['lr'] = lr
 
   #=======================================================================================#
   #=======================================================================================#
@@ -262,7 +253,7 @@ class Solver(object):
     
     # Start with trained model if exists
     if self.pretrained_model:
-        start = int(self.pretrained_model.split('_')[0])
+        start = int(self.pretrained_model.split('_')[1].split('/')[2])
         # Decay learning rate
         for i in range(start):
             if (i+1) > (self.num_epochs - self.num_epochs_decay):

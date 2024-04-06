@@ -43,3 +43,5 @@ def evaluate_model(model, test_loader):
 # Evaluate the model
 test_accuracy = evaluate_model(model, test_loader)
 print('Test Accuracy: {:.2f}%'.format(test_accuracy))
+
+## python main.py --image_size 256 --lr 0.0001 --num_epochs 2 --batch_size 64 --fold 0 --mode train
