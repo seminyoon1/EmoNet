@@ -5,7 +5,7 @@ from data_loader import EmotionNet
 
 # Load the saved model
 model = Classifier()
-model.load_state_dict(torch.load('snapshot\\models\\EmotionNet\\normal\\fold_0\\Imagenet\\03_43.pth'))
+model.load_state_dict(torch.load('snapshot\\models\\EmotionNet\\normal\\fold_0\\Imagenet\\04_32.pth'))
 model.eval()
 
 # Set the required parameters
@@ -43,5 +43,3 @@ def evaluate_model(model, test_loader):
 # Evaluate the model
 test_accuracy = evaluate_model(model, test_loader)
 print('Test Accuracy: {:.2f}%'.format(test_accuracy))
-
-## python main.py --image_size 256 --lr 0.0001 --num_epochs 2 --batch_size 64 --fold 0 --mode train
