@@ -114,8 +114,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode_data', type=str, default='normal', choices=['normal', 'aligned'])  
 
     parser.add_argument('--finetuning', type=str, default='Imagenet', choices=['Imagenet', 'RANDOM'])   
-    parser.add_argument('--pretrained_model', type=str, default='')    
-    # ./snapshot/models/EmotionNet/normal/fold_0/Imagenet/11_16.pth
+    parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/11_16.pth')    
     # Step size
     parser.add_argument('--log_step', type=int, default=2000)
     parser.add_argument('--model_save_step', type=int, default=20000)
