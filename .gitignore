@@ -1,4 +1,8 @@
-snapshot*
 data/
 pretrained/
 *.pyc
+01_32.pth
+02_32.pth
+04_32.pth
+11_16.pth
+model_epoch_1.pth
