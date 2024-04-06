@@ -128,4 +128,4 @@ if __name__ == '__main__':
     print(config)
     main(config)
 
-    ## python main.py --image_size 256 --lr 0.001 --num_epochs 2 --batch_size 64 --fold 0 --mode train
+    ## python main.py --image_size 256 --lr 0.001 --num_epochs 5 --batch_size 32 --fold 0 --mode train
