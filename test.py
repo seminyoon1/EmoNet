@@ -24,7 +24,7 @@ transform = transforms.Compose([
 test_dataset = EmotionNet(image_size=image_size, metadata_path=metadata_path, transform=transform, mode=mode, fold=fold)
 
 # Create DataLoader for batch processing
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=64, shuffle=False)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False)
 
 # Define a function for evaluation
 def evaluate_model(model, test_loader):
