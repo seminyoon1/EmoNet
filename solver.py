@@ -13,7 +13,7 @@ import torchvision.models as models
 from PIL import Image
 import time
 import datetime
-from models.vgg16 import Classifier
+from models.resnet50 import Classifier
 import ipdb
 import config as cfg
 from config import num_classes
