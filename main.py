@@ -34,7 +34,6 @@ def main(config):
     model = Classifier()  # Update this with your model class and appropriate initialization parameters
   
     # Load the pre-trained weights if specified
-    config.pretrained_model = None
     if config.pretrained_model:
         print(config.pretrained_model)
         pretrained_weights = torch.load(config.pretrained_model)
@@ -114,7 +113,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode_data', type=str, default='normal', choices=['normal', 'aligned'])  
 
     parser.add_argument('--finetuning', type=str, default='Imagenet', choices=['Imagenet', 'RANDOM'])   
-    parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/04_32.pth')    
+    parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/02_85.pth')    
     # Step size
     parser.add_argument('--log_step', type=int, default=2000)
     parser.add_argument('--model_save_step', type=int, default=20000)
@@ -128,4 +127,4 @@ if __name__ == '__main__':
     print(config)
     main(config)
 
-    ## python main.py --image_size 256 --lr 0.001 --num_epochs 5 --batch_size 32 --fold 0 --mode train
+    ## python main.py --image_size 320 --lr 0.001 --num_epochs 5 --batch_size 32 --fold 0 --mode train

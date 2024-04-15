@@ -24,7 +24,7 @@ import numpy as np
 import torchvision.models as models
 
 # Load pre-trained VGG-16 model
-model_resnet50 = models.resnet50(pretrained=True)
+model_resnet50 = models.resnet18(pretrained=True)
 
 class Classifier(nn.Module):
 
@@ -34,7 +34,7 @@ class Classifier(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
-        self.model = models.resnet50(num_classes=self.num_classes)
+        self.model = models.resnet18(num_classes=self.num_classes)
         print("[OK] Weights initialized randomly.")
 
     def forward(self, x):
