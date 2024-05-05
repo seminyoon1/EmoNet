@@ -1,6 +1,6 @@
-CNN.ipynb (Yintong Liu)
-DNN.ipynb (Yintong Liu)
-Download data from https://www.kaggle.com/datasets/devzohaib/dog-emotions-prediction and upload to google drive.
+CNN.ipynb (Yintong Liu)  
+DNN.ipynb (Yintong Liu)  
+Download data from https://www.kaggle.com/datasets/devzohaib/dog-emotions-prediction and upload to google drive.  
 Run the Notebook
 
 
