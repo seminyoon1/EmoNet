@@ -57,7 +57,9 @@ def main(config):
         return
     
     if config.mode == 'train':
-        # For loop for training epochs
+
+        best_accuracy = 0.5058 # Initialize best accuracy
+    # For loop for training epochs
         for epoch in range(config.num_epochs):
             print(f"Epoch [{epoch+1}/{config.num_epochs}]")
 
@@ -65,12 +67,20 @@ def main(config):
             solver.train()
 
             # Validation phase
-            solver.val(load=True)
+            current_accuracy = solver.val(load=True)[0] * 0.01
+            
 
-            # Save model checkpoint after each epoch
-            model_path = os.path.join(config.model_save_path, f"model_epoch_{epoch+1}.pth")
-            torch.save(solver.C.state_dict(), model_path)
-            print(f"Saved model checkpoint: {model_path}")
+            # Check if current accuracy is higher than the best accuracy
+            if current_accuracy > best_accuracy:
+                best_accuracy = current_accuracy
+
+                # Save model checkpoint
+                model_path = os.path.join(config.model_save_path, f"best_model.pth")
+                torch.save(solver.C.state_dict(), model_path)
+                print(f"Saved best model checkpoint: {model_path}")
+            else:
+                print("Accuracy not improved. Skipping saving the model.")
+                
     elif config.mode == 'test':
         solver.val(load=True, plot=True)
     elif config.mode == 'sample':
@@ -93,7 +103,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta2', type=float, default=0.999)
     parser.add_argument('--num_workers', type=int, default=4) 
     parser.add_argument('--BLUR', action='store_true', default=False) 
-    parser.add_argument('--GRAY', action='store_true', default=False) 
+    parser.add_argument('--GRAY', action='store_true',  default=False) 
     parser.add_argument('--DISPLAY_NET', action='store_true', default=False) 
 
     # Test settings
@@ -113,7 +123,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode_data', type=str, default='normal', choices=['normal', 'aligned'])  
 
     parser.add_argument('--finetuning', type=str, default='Imagenet', choices=['Imagenet', 'RANDOM'])   
-    parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/02_85.pth')    
+    parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/10_85.pth')    
     # Step size
     parser.add_argument('--log_step', type=int, default=2000)
     parser.add_argument('--model_save_step', type=int, default=20000)
@@ -127,4 +137,5 @@ if __name__ == '__main__':
     print(config)
     main(config)
 
-    ## python main.py --image_size 320 --lr 0.001 --num_epochs 5 --batch_size 32 --fold 0 --mode train
+    ## python main.py --image_size 320 --lr 0.001 --num_epochs 5 --batch_size 100 --fold 0 --mode train
+    ## python main.py --image_size 320 --lr 0.001 --num_epochs 1 --batch_size 100 --fold 0 --mode test

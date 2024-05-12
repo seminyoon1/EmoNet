@@ -1,11 +1,11 @@
 import torch
 from torchvision.transforms import transforms
-from models.vgg16 import Classifier
+from models.resnet50 import Classifier
 from data_loader import EmotionNet
 
 # Load the saved model
 model = Classifier()
-model.load_state_dict(torch.load('snapshot\\models\\EmotionNet\\normal\\fold_0\\Imagenet\\04_32.pth'))
+model.load_state_dict(torch.load('snapshot\\models\\EmotionNet\\normal\\fold_0\\Imagenet\\10_85.pth'))
 model.eval()
 
 # Set the required parameters
@@ -24,7 +24,7 @@ transform = transforms.Compose([
 test_dataset = EmotionNet(image_size=image_size, metadata_path=metadata_path, transform=transform, mode=mode, fold=fold)
 
 # Create DataLoader for batch processing
-test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=100, shuffle=False)
+test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=5, shuffle=False)
 
 # Define a function for evaluation
 def evaluate_model(model, test_loader):
@@ -43,3 +43,5 @@ def evaluate_model(model, test_loader):
 # Evaluate the model
 test_accuracy = evaluate_model(model, test_loader)
 print('Test Accuracy: {:.2f}%'.format(test_accuracy))
+
+#Do not use, Test accuracy always shows 33.79%
