@@ -32,4 +32,5 @@ The last 2 commented lines is also given in the main file for testing and traini
 
 (For clearer instructions: https://docs.google.com/document/d/12_V4hhbh7AesxHiUVYgzSf_n1xCTAOHYU_P7H3V_mXk)
 
+The rest of the files were adjusted from the original repository
 (Eliot Yoon)
