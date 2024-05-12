@@ -30,4 +30,6 @@ python main.py --image_size 256 --lr 0.001 --num_epochs 1 --batch_size 100 --fol
 
 The last 2 commented lines is also given in the main file for testing and training.
 
+(For clearer instructions: https://docs.google.com/document/d/12_V4hhbh7AesxHiUVYgzSf_n1xCTAOHYU_P7H3V_mXk)
+
 (Eliot Yoon)
