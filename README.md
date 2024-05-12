@@ -5,20 +5,29 @@ Run the Notebook
 
 
 # EmoNet
+Go to this google drive: https://drive.google.com/drive/folders/1pEHSHE_T01FdzNPhr0RsD6_Dy1V9nRcy
+And select and download the latest training weight and add it in the folder that contains “TEST_MODEL.py”
 
-## Data to train:
-![](show/0001.jpg)
+The latest weight currently is 10_85.pth
 
-## Network: VGG16
-![](network.png)
+Training a model:
+Go to main.py, line 117
+ parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/11_16.pth')
 
-## Confusion Matrix for three-fold cross testing
+Replace the path with the training weight that you downloaded: ‘.../Imagenet/XX_YY.pth’
 
-### Fold 0
-![](show/cm_fold0.png)
+In the terminal, run:
+python main.py --image_size 256 --lr 0.001 --num_epochs 5 --batch_size 32 --fold 0 --mode train
 
-### Fold 1
-![](show/cm_fold1.png)
+Testing a model:
+Go to main.py, line 117
+ parser.add_argument('--pretrained_model', type=str, default='./snapshot/models/EmotionNet/normal/fold_0/Imagenet/11_16.pth')
 
-### Fold 2
-![](show/cm_fold2.png)
+Replace the path with the training weight that you downloaded: ‘.../Imagenet/XX_YY.pth’
+
+In the terminal, run:
+python main.py --image_size 256 --lr 0.001 --num_epochs 1 --batch_size 100 --fold 0 --mode test
+
+The last 2 commented lines is also given in the main file for testing and training.
+
+(Eliot Yoon)
